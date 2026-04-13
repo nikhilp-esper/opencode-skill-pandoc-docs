@@ -113,16 +113,29 @@ pandoc input.md \
   --css=SKILL_DIR/reference/github.css
 ```
 
-### 4. Upload to Google Drive
+### 4. Upload or update on Google Drive
+
+#### First upload (creates a new file)
 
 ```bash
-gws drive +upload ./output.docx
-gws drive +upload ./output.docx --parent FOLDER_ID
 gws drive +upload ./output.docx --name "RFC - Feature Name.docx"
+gws drive +upload ./output.docx --parent FOLDER_ID
 ```
 
+The response includes the file `id`. **Save this ID** — you need it to update the same file later.
+
+#### Update an existing file (same link, new content)
+
+```bash
+gws drive files update \
+  --params '{"fileId": "EXISTING_FILE_ID"}' \
+  --upload ./output.docx
+```
+
+This replaces the content of the existing file in-place. The file ID, sharing settings, and Google Docs link all stay the same. Always prefer updating over creating a new upload when revising a document.
+
 > [!CAUTION]
-> Confirm with the user before uploading. Show the filename and destination.
+> Confirm with the user before uploading or updating. Show the filename and destination.
 
 ### 5. Get the Google Docs link
 
@@ -133,6 +146,9 @@ After upload, the response includes the file ID. Build the link:
 - Drive file: `https://drive.google.com/file/d/FILE_ID/view`
 
 For DOCX files, Google Drive auto-converts to Docs format. The `/edit` link opens the editable Google Doc.
+
+> [!TIP]
+> When working on a document iteratively, save the file ID after the first upload and use `files update` for all subsequent revisions. This keeps a single stable link throughout the editing process.
 
 ## Pandoc markdown tips
 
@@ -227,8 +243,12 @@ pandoc /tmp/rfc.md -o /tmp/rfc.docx \
   --from=markdown+smart+pipe_tables+yaml_metadata_block \
   --toc --number-sections
 
-# Upload
+# First time: upload and save the file ID
 gws drive +upload /tmp/rfc.docx --name "RFC - Feature Name.docx"
+# Returns {"id": "FILE_ID", ...}
+
+# Subsequent revisions: update in place (same link)
+gws drive files update --params '{"fileId": "FILE_ID"}' --upload /tmp/rfc.docx
 ```
 
 ### Technical Analysis
