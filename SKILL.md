@@ -27,10 +27,10 @@ Choose the right template based on document purpose:
 | Template | Use Case | Flags |
 |----------|----------|-------|
 | `esper-brief.docx` | Meeting prep briefs, customer summaries, 1-2 page dense docs | None |
-| `esper-technical.docx` | Technical analyses, RFCs, architecture docs | `--toc --number-sections` |
+| `esper-technical.docx` | Technical analyses, RFCs, architecture docs | `--number-sections` |
 | `esper-executive.docx` | One-pagers, exec summaries, decision docs | None |
-| `esper-report.docx` | QBRs, formal reports, multi-page deliverables | `--toc` |
-| `esper-proposal.docx` | RFP responses, proposals, formal submissions | `--toc --number-sections` |
+| `esper-report.docx` | QBRs, formal reports, multi-page deliverables | None |
+| `esper-proposal.docx` | RFP responses, proposals, formal submissions | `--number-sections` |
 
 **Decision guide:**
 - Short (1-2 pages), dense info, internal use → `esper-brief`
@@ -38,6 +38,9 @@ Choose the right template based on document purpose:
 - Single page, metrics-heavy, exec/leadership audience → `esper-executive`
 - Multi-page, customer-facing, formal tone → `esper-report`
 - Responding to a customer request/RFP, requirements matrix → `esper-proposal`
+
+> [!IMPORTANT]
+> Never use `--toc`. Tables of contents are not wanted in any Esper document.
 
 ## Workflow
 
@@ -74,19 +77,19 @@ pandoc /tmp/doc.md -o /tmp/doc.docx \
   --lua-filter=SKILL_DIR/filters/strip-bookmarks.lua
 ```
 
-**With TOC and numbered sections (technical, report, proposal):**
+**With numbered sections (technical, proposal):**
 
 ```bash
 pandoc /tmp/doc.md -o /tmp/doc.docx \
   --reference-doc=SKILL_DIR/reference/esper-technical.docx \
   --from=markdown+smart+pipe_tables+yaml_metadata_block \
   --lua-filter=SKILL_DIR/filters/strip-bookmarks.lua \
-  --toc --number-sections
+  --number-sections
 ```
 
 Replace `SKILL_DIR` with the resolved path to this skill's directory.
 
-**Always include both `--reference-doc` and `--lua-filter`.**
+**Always include both `--reference-doc` and `--lua-filter`. Never use `--toc`.**
 
 ### 3. Upload to Google Drive
 
@@ -145,7 +148,7 @@ Best for: RFCs, architecture docs, analyses, engineering deliverables.
 
 - Heading 1 has a navy rule (line) below it for visual separation
 - Code blocks get light gray background
-- Designed for multi-page documents with TOC
+- Designed for multi-page documents
 - Page numbers in footer
 - Standard 1.0" margins
 
@@ -159,7 +162,7 @@ date: "June 2026"
 ---
 ```
 
-**Flags:** `--toc --number-sections`
+**Flags:** `--number-sections`
 
 ### esper-executive.docx — Executive Summary
 
@@ -198,7 +201,7 @@ date: "Q2 2026"
 ---
 ```
 
-**Flags:** `--toc`
+**Flags:** None
 
 **Cover page pattern:**
 ```markdown
@@ -244,7 +247,7 @@ date: "June 2026"
 ---
 ```
 
-**Flags:** `--toc --number-sections`
+**Flags:** `--number-sections`
 
 ## Styling Reference (All Templates)
 

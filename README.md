@@ -57,10 +57,10 @@ selection guide).
 | Template | Use case | Recommended flags |
 |----------|----------|-------------------|
 | `reference/esper-brief.docx` | Meeting prep, customer briefs (dense, no cover) | — |
-| `reference/esper-technical.docx` | RFCs, analyses, architecture docs | `--toc --number-sections` |
+| `reference/esper-technical.docx` | RFCs, analyses, architecture docs | `--number-sections` |
 | `reference/esper-executive.docx` | One-pagers, executive summaries | — |
-| `reference/esper-report.docx` | QBRs, formal multi-page reports | `--toc` |
-| `reference/esper-proposal.docx` | RFP responses, proposals | `--toc --number-sections` |
+| `reference/esper-report.docx` | QBRs, formal multi-page reports | — |
+| `reference/esper-proposal.docx` | RFP responses, proposals | `--number-sections` |
 
 All templates share consistent styling:
 
