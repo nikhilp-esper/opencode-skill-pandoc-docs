@@ -48,23 +48,60 @@ The agent will load the skill automatically when the task matches document creat
 | PPTX | `.pptx` | Presentations |
 | HTML | `.html` | Web/email |
 
+## Templates
+
+Five professional, lightly-branded reference templates ship with the skill. The
+agent picks the right one based on document type (see `SKILL.md` for the
+selection guide).
+
+| Template | Use case | Recommended flags |
+|----------|----------|-------------------|
+| `reference/esper-brief.docx` | Meeting prep, customer briefs (dense, no cover) | — |
+| `reference/esper-technical.docx` | RFCs, analyses, architecture docs | `--toc --number-sections` |
+| `reference/esper-executive.docx` | One-pagers, executive summaries | — |
+| `reference/esper-report.docx` | QBRs, formal multi-page reports | `--toc` |
+| `reference/esper-proposal.docx` | RFP responses, proposals | `--toc --number-sections` |
+
+All templates share consistent styling:
+
+- Headings: Calibri Light, navy (`#1A237E`), not bolded
+- Body: Calibri 11pt, dark gray (`#212121`)
+- Tables: navy header row with white text, alternating `#F5F8FC` rows, thin gray borders
+- No bookmarks, no embedded logos, no fragile assets
+
 ## Bundled files
 
 | File | Purpose |
 |------|---------|
 | `SKILL.md` | Skill instructions (loaded by OpenCode) |
-| `reference/esper-reference.docx` | DOCX reference template for consistent styling |
+| `reference/esper-brief.docx` | Brief / meeting-prep template |
+| `reference/esper-technical.docx` | Technical document template |
+| `reference/esper-executive.docx` | Executive one-pager template |
+| `reference/esper-report.docx` | Formal report / QBR template |
+| `reference/esper-proposal.docx` | Proposal / RFP response template |
+| `reference/esper-reference.docx` | Legacy generic template (deprecated) |
 | `reference/github.css` | GitHub-style CSS for HTML output |
+| `filters/strip-bookmarks.lua` | Strips pandoc heading-anchor bookmarks from DOCX |
+| `scripts/generate_templates.py` | Regenerates all templates from code |
 
-## Customizing the template
+## Regenerating / customizing the templates
 
-To use your own DOCX styling:
+The templates are generated programmatically with [python-docx](https://python-docx.readthedocs.io)
+so styling changes are version-controlled and reproducible.
 
-1. Open `reference/esper-reference.docx` in Word or Google Docs
-2. Modify the heading styles, fonts, margins, and colors
-3. Save back as `.docx`
+```bash
+pip install python-docx
 
-Pandoc uses the styles from the reference doc, not the content.
+# Regenerate into the repo's reference/ directory (default when run from the repo)
+python3 scripts/generate_templates.py
+
+# Or write to a custom location
+PANDOC_TEMPLATE_DIR=~/my-templates python3 scripts/generate_templates.py
+```
+
+To change brand colors, fonts, or spacing, edit the constants and
+`configure_base_styles()` near the top of `scripts/generate_templates.py`, then
+re-run. Pandoc uses the *styles* from the reference doc, not its content.
 
 ## License
 
