@@ -12,25 +12,44 @@ metadata:
 
 # pandoc-docs
 
-Create professional documents from markdown using pandoc, then upload to Google Drive.
+Create professional Esper-branded documents from markdown using pandoc, then upload to Google Drive.
 
 ## When to use this skill
 
-- User asks you to create a document, RFC, report, technical analysis, or any formatted written deliverable
+- User asks you to create a document, RFC, report, brief, proposal, or any formatted deliverable
 - User asks to export content to DOCX, PDF, or PPTX
 - User asks to upload a document to Google Drive
+
+## Template Selection (IMPORTANT)
+
+Choose the right template based on document purpose:
+
+| Template | Use Case | Flags |
+|----------|----------|-------|
+| `esper-brief.docx` | Meeting prep briefs, customer summaries, 1-2 page dense docs | None |
+| `esper-technical.docx` | Technical analyses, RFCs, architecture docs | `--toc --number-sections` |
+| `esper-executive.docx` | One-pagers, exec summaries, decision docs | None |
+| `esper-report.docx` | QBRs, formal reports, multi-page deliverables | `--toc` |
+| `esper-proposal.docx` | RFP responses, proposals, formal submissions | `--toc --number-sections` |
+
+**Decision guide:**
+- Short (1-2 pages), dense info, internal use → `esper-brief`
+- Technical depth, code blocks, engineering audience → `esper-technical`
+- Single page, metrics-heavy, exec/leadership audience → `esper-executive`
+- Multi-page, customer-facing, formal tone → `esper-report`
+- Responding to a customer request/RFP, requirements matrix → `esper-proposal`
 
 ## Workflow
 
 ### 1. Write content as markdown
 
-Write the document content to a temporary `.md` file. Use standard markdown with pandoc extensions:
+Write document content to a `.md` file in `/tmp/`. Use standard markdown with pandoc extensions:
 
 ```markdown
 ---
 title: "Document Title"
-author: "Author Name"
-date: "2026-04-13"
+subtitle: "Context or author"
+date: "June 2026"
 ---
 
 # First Section
@@ -42,119 +61,206 @@ Body text with **bold** and *italic*.
 | data     | data     |
 ```
 
-The YAML frontmatter block sets document metadata (title page, headers/footers).
+The YAML frontmatter sets document metadata (title page, headers).
 
-### 2. Choose output format
+### 2. Convert with pandoc
 
-| Document Type | Format | Extension | Notes |
-|---------------|--------|-----------|-------|
-| RFC / Technical doc | DOCX | `.docx` | Auto-converts to Google Docs on upload |
-| Report / Analysis | DOCX | `.docx` | Best for collaborative editing |
-| Presentation | PPTX | `.pptx` | Slide per `##` heading |
-| Printable / Archival | PDF | `.pdf` | Requires LaTeX (`pdflatex` or `xelatex`) |
-| Web / Email | HTML | `.html` | Standalone with embedded CSS |
-
-**DOCX is the default choice** — Google Drive converts it to a native Google Doc automatically, preserving headings, tables, lists, and basic formatting.
-
-### 3. Convert with pandoc
-
-#### DOCX (default — for Google Docs)
+**Standard command (all templates):**
 
 ```bash
-pandoc input.md \
-  -o output.docx \
-  --reference-doc=SKILL_DIR/reference/esper-reference.docx \
+pandoc /tmp/doc.md -o /tmp/doc.docx \
+  --reference-doc=SKILL_DIR/reference/TEMPLATE_NAME.docx \
   --from=markdown+smart+pipe_tables+yaml_metadata_block \
-  --to=docx \
-  --toc \
-  --number-sections
+  --lua-filter=SKILL_DIR/filters/strip-bookmarks.lua
 ```
 
-The `--reference-doc` applies consistent Esper styling (fonts, margins, heading colors). Omit `--toc` and `--number-sections` for short documents.
-
-Replace `SKILL_DIR` with the actual resolved path to this skill's base directory (shown at the bottom of the loaded skill content).
-
-#### PDF (when printable output is needed)
+**With TOC and numbered sections (technical, report, proposal):**
 
 ```bash
-pandoc input.md \
-  -o output.pdf \
+pandoc /tmp/doc.md -o /tmp/doc.docx \
+  --reference-doc=SKILL_DIR/reference/esper-technical.docx \
   --from=markdown+smart+pipe_tables+yaml_metadata_block \
-  --pdf-engine=pdflatex \
-  -V geometry:margin=1in \
-  -V fontsize=11pt \
-  --toc \
-  --number-sections
+  --lua-filter=SKILL_DIR/filters/strip-bookmarks.lua \
+  --toc --number-sections
 ```
 
-If `pdflatex` is not available, convert to DOCX instead and let the user export to PDF from Google Docs.
+Replace `SKILL_DIR` with the resolved path to this skill's directory.
 
-#### PPTX (presentations)
+**Always include both `--reference-doc` and `--lua-filter`.**
 
-```bash
-pandoc input.md \
-  -o output.pptx \
-  --from=markdown+smart+pipe_tables+yaml_metadata_block \
-  --slide-level=2
-```
-
-Each `##` heading starts a new slide. Use `---` for manual slide breaks.
-
-#### HTML (standalone web page)
-
-```bash
-pandoc input.md \
-  -o output.html \
-  --from=markdown+smart+pipe_tables+yaml_metadata_block \
-  --to=html5 \
-  --standalone \
-  --toc \
-  --number-sections \
-  --css=SKILL_DIR/reference/github.css
-```
-
-### 4. Upload or update on Google Drive
+### 3. Upload to Google Drive
 
 #### First upload (creates a new file)
 
 ```bash
-gws drive +upload ./output.docx --name "RFC - Feature Name.docx"
-gws drive +upload ./output.docx --parent FOLDER_ID
+gws drive +upload /tmp/doc.docx --name "Document Title.docx"
+gws drive +upload /tmp/doc.docx --parent FOLDER_ID
 ```
 
-The response includes the file `id`. **Save this ID** — you need it to update the same file later.
+Save the returned file `id` for future updates.
 
 #### Update an existing file (same link, new content)
 
 ```bash
 gws drive files update \
   --params '{"fileId": "EXISTING_FILE_ID"}' \
-  --upload ./output.docx
+  --upload /tmp/doc.docx
 ```
-
-This replaces the content of the existing file in-place. The file ID, sharing settings, and Google Docs link all stay the same. Always prefer updating over creating a new upload when revising a document.
 
 > [!CAUTION]
 > Confirm with the user before uploading or updating. Show the filename and destination.
 
-### 5. Get the Google Docs link
+### 4. Get the Google Docs link
 
-After upload, the response includes the file ID. Build the link:
-
+After upload, build the link from the file ID:
 - Google Docs: `https://docs.google.com/document/d/FILE_ID/edit`
-- Google Slides: `https://docs.google.com/presentation/d/FILE_ID/edit`
 - Drive file: `https://drive.google.com/file/d/FILE_ID/view`
 
-For DOCX files, Google Drive auto-converts to Docs format. The `/edit` link opens the editable Google Doc.
+DOCX files auto-convert to Google Docs format on Drive.
 
-> [!TIP]
-> When working on a document iteratively, save the file ID after the first upload and use `files update` for all subsequent revisions. This keeps a single stable link throughout the editing process.
+## Template Details
 
-## Pandoc markdown tips
+### esper-brief.docx — Customer Brief
+
+Best for: meeting prep, customer summaries, handoff docs.
+
+- No cover page — starts immediately with title
+- Tight line spacing (1.15) for density
+- "At a Glance" summary tables work great
+- Navy header tables with alternating row shading
+- Footer: "Confidential - Esper Inc."
+- Margins: 0.85" (slightly tighter for more content)
+
+**Example frontmatter:**
+```yaml
+---
+title: "Meeting Brief: Customer Name"
+subtitle: "Weekly Sync — June 15, 2026"
+---
+```
+
+### esper-technical.docx — Technical Document
+
+Best for: RFCs, architecture docs, analyses, engineering deliverables.
+
+- Heading 1 has a navy rule (line) below it for visual separation
+- Code blocks get light gray background
+- Designed for multi-page documents with TOC
+- Page numbers in footer
+- Standard 1.0" margins
+
+**Example frontmatter:**
+```yaml
+---
+title: "RFC: Feature Name"
+subtitle: "Esper Engineering"
+author: "Author Name"
+date: "June 2026"
+---
+```
+
+**Flags:** `--toc --number-sections`
+
+### esper-executive.docx — Executive Summary
+
+Best for: one-pagers, decision docs, exec briefs.
+
+- Large title (24pt) for impact
+- Metrics work well in a borderless table (bold values, gray labels)
+- Call-to-action sections get a light blue background
+- Tight spacing for single-page density
+- No footer (cleaner for exec audience)
+
+**Example frontmatter:**
+```yaml
+---
+title: "Executive Summary"
+subtitle: "Acme Corp — Expansion Opportunity"
+---
+```
+
+### esper-report.docx — QBR / Formal Report
+
+Best for: QBRs, customer reports, multi-page formal deliverables.
+
+- Cover page section (centered title, subtitle, date)
+- Use `\newpage` after frontmatter for cover page effect
+- Header: "Esper" text, Footer: "Confidential"
+- Heading 1 with navy rule below
+- Designed for 5-15 page documents
+
+**Example frontmatter:**
+```yaml
+---
+title: "Quarterly Business Review"
+subtitle: "Prepared for Customer Name"
+date: "Q2 2026"
+---
+```
+
+**Flags:** `--toc`
+
+**Cover page pattern:**
+```markdown
+---
+title: ""
+---
+
+\begin{center}
+\vspace*{2cm}
+{\Huge Quarterly Business Review}
+
+\vspace{0.5cm}
+{\large Prepared for Acme Corp}
+
+\vspace{1cm}
+{\normalsize Q2 2026}
+\end{center}
+
+\newpage
+
+# Executive Summary
+...
+```
+
+Note: The LaTeX commands above only work with PDF output. For DOCX, just use a title in frontmatter — pandoc generates the title block automatically.
+
+### esper-proposal.docx — Proposal / RFP Response
+
+Best for: RFP responses, formal proposals, contract submissions.
+
+- Cover page with title, subtitle, submission details
+- Numbered sections (1. 1.1. 1.1.1.) for RFP cross-referencing
+- Requirements matrix tables (navy header, status column)
+- Implementation timeline as numbered list
+- Footer: "Confidential - Esper Inc."
+
+**Example frontmatter:**
+```yaml
+---
+title: "Enterprise MDM Solution Proposal"
+subtitle: "In Response to Customer RFP-2026-042"
+date: "June 2026"
+---
+```
+
+**Flags:** `--toc --number-sections`
+
+## Styling Reference (All Templates)
+
+All templates share consistent brand styling:
+
+- **Headings**: Calibri Light, navy (#1A237E), not bolded
+- **Body**: Calibri 11pt, dark gray (#212121)
+- **Tables**: Navy header row with white text, alternating #F5F8FC rows, thin gray borders
+- **Lists**: Calibri 11pt, tight spacing
+- **Quotes**: Gray italic, left-indented
+- **Code**: Consolas 10pt, light gray background
+- **Links**: Blue (#0288D1) — set by Word/Docs rendering
+
+## Pandoc Markdown Tips
 
 ### Tables
-
-Use pipe tables (the `pipe_tables` extension is enabled):
 
 ```markdown
 | Feature | Status | Notes |
@@ -165,25 +271,13 @@ Use pipe tables (the `pipe_tables` extension is enabled):
 
 ### Code blocks
 
-Use fenced code blocks with language hints:
-
 ````markdown
-```python
-def hello():
-    print("world")
+```kotlin
+fun hello() = "world"
 ```
 ````
 
-### Definition lists
-
-```markdown
-Term
-:   Definition text here.
-```
-
-### Page breaks (DOCX/PDF only)
-
-Force a page break in DOCX output:
+### Page breaks (DOCX only)
 
 ```markdown
 \newpage
@@ -195,92 +289,56 @@ Force a page break in DOCX output:
 ![Caption text](path/to/image.png){ width=80% }
 ```
 
-### Metadata for title page
+### Definition lists
 
-The YAML frontmatter generates a title page in DOCX and PDF:
-
-```yaml
----
-title: "RFC: Feature Name"
-subtitle: "Esper Engineering"
-author: "Author Name"
-date: "April 2026"
-abstract: |
-  Brief summary of the document purpose and scope.
----
+```markdown
+Term
+:   Definition text here.
 ```
 
-## Common recipes
+## PDF Output
 
-### RFC / Design Document
+If PDF is specifically requested:
 
 ```bash
-# Write content
-cat > /tmp/rfc.md << 'CONTENT'
----
-title: "RFC: Feature Name"
-subtitle: "Esper Engineering"
-author: "Author Name"
-date: "April 2026"
----
-
-# Problem Statement
-...
-
-# Proposed Solution
-...
-
-# Alternatives Considered
-...
-
-# Implementation Plan
-...
-CONTENT
-
-# Convert
-pandoc /tmp/rfc.md -o /tmp/rfc.docx \
-  --reference-doc=SKILL_DIR/reference/esper-reference.docx \
+pandoc /tmp/doc.md -o /tmp/doc.pdf \
   --from=markdown+smart+pipe_tables+yaml_metadata_block \
-  --toc --number-sections
-
-# First time: upload and save the file ID
-gws drive +upload /tmp/rfc.docx --name "RFC - Feature Name.docx"
-# Returns {"id": "FILE_ID", ...}
-
-# Subsequent revisions: update in place (same link)
-gws drive files update --params '{"fileId": "FILE_ID"}' --upload /tmp/rfc.docx
+  --pdf-engine=pdflatex \
+  -V geometry:margin=1in \
+  -V fontsize=11pt
 ```
 
-### Technical Analysis
+If `pdflatex` is unavailable, generate DOCX and let the user export to PDF from Google Docs.
 
-Same as RFC but typically without `--toc` for shorter documents. Include tables, code blocks, and diagrams.
+## PPTX Output
 
-### Sprint Report
-
-Short document, no TOC, no numbered sections:
+For basic presentations (Marp or Gamma API are better for polished decks):
 
 ```bash
-pandoc /tmp/report.md -o /tmp/report.docx \
-  --reference-doc=SKILL_DIR/reference/esper-reference.docx \
-  --from=markdown+smart+pipe_tables+yaml_metadata_block
+pandoc /tmp/slides.md -o /tmp/slides.pptx \
+  --from=markdown+smart+pipe_tables+yaml_metadata_block \
+  --slide-level=2
 ```
 
-## Bundled reference files
+Each `##` heading starts a new slide.
+
+## Bundled Files
 
 | File | Purpose |
 |------|---------|
-| `reference/esper-reference.docx` | DOCX reference template with Esper styling (fonts, margins, heading colors) |
+| `reference/esper-brief.docx` | Dense brief/meeting prep template |
+| `reference/esper-technical.docx` | Technical doc with ruled headings and code styling |
+| `reference/esper-executive.docx` | High-impact one-pager template |
+| `reference/esper-report.docx` | Formal multi-page report with cover section |
+| `reference/esper-proposal.docx` | RFP/proposal with numbered sections |
+| `reference/esper-reference.docx` | Legacy generic template (deprecated — use specific templates above) |
+| `filters/strip-bookmarks.lua` | Removes pandoc heading anchor bookmarks from DOCX |
+| `reference/github.css` | CSS for HTML output |
 
 ## Troubleshooting
 
-- **"Unknown output format"**: Check the file extension matches a supported pandoc format
-- **No title page in DOCX**: Ensure the YAML frontmatter is at the very top of the file, preceded by `---` and followed by `---`
-- **Tables not rendering**: Ensure you're using `pipe_tables` extension (included in the `--from` flag above)
-- **Missing `pdflatex`**: Fall back to DOCX and let the user export to PDF from Google Docs
-- **Upload fails**: Run `gws auth login` to refresh OAuth credentials
-
-## See Also
-
-- [gws-drive-upload](../gws-drive-upload/SKILL.md) — Upload files to Google Drive
-- [gws-docs](../gws-docs/SKILL.md) — Read and write Google Docs directly
-- [gws-shared](../gws-shared/SKILL.md) — Auth and global flags
+- **Tables have no styling**: Always use `--reference-doc` — pandoc default has no table formatting
+- **Bookmark icons next to headings**: Always include `--lua-filter=SKILL_DIR/filters/strip-bookmarks.lua`
+- **No title page**: Ensure YAML frontmatter is at the very top with `---` delimiters
+- **Upload fails**: Run `gws auth login` to refresh OAuth
+- **Missing pdflatex**: Use DOCX output instead, let user export to PDF from Google Docs
